@@ -20,7 +20,9 @@ FFMPEG_OPTIONS = {
 
 async def play_audio(ctx, url):
     guild_id = ctx.guild.id
-    queues[guild_id].append(url)
+    with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
+        info = ydl.extract_info(url, download=False)
+        queues[guild_id].append([info['url'], info.get('title', url), url])
 
     voice = ctx.guild.voice_client
     if voice and voice.is_playing():
@@ -34,7 +36,7 @@ async def _play_next(ctx):
     if not queues[guild_id]:
         return
 
-    url = queues[guild_id].popleft()
+    info = queues[guild_id].popleft()
     voice = ctx.guild.voice_client
 
     if not ctx.author.voice:
@@ -45,13 +47,9 @@ async def _play_next(ctx):
         channel = ctx.author.voice.channel
         voice = await channel.connect()
 
-    with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
-        info = ydl.extract_info(url, download=False)
-        audio_url = info['url']
-
-    source = discord.FFmpegPCMAudio(audio_url, **FFMPEG_OPTIONS)
+    source = discord.FFmpegPCMAudio(info[0], **FFMPEG_OPTIONS)
     voice.play(source, after=lambda e: asyncio.run_coroutine_threadsafe(_play_next(ctx), ctx.bot.loop))
-    await ctx.send(f"Tocando agora: {info.get('title', url)}")
+    await ctx.send(f"Tocando agora: {info[1]}")
 
 async def stop_audio(ctx):
     guild_id = ctx.guild.id
@@ -83,10 +81,8 @@ async def show_queue(ctx):
         return
 
     msg = "**Fila atual:**\n"
-    for i, url in enumerate(queue, 1):
-        with yt_dlp.YoutubeDL(YDL_OPTIONS) as ydl:
-            info = ydl.extract_info(url, download=False)
-            msg += f"{i}. {info} - {url}\n"
+    for i, info in enumerate(queue, 1):
+        msg += f"{i}. {info[1]}: {info[2]} \n"
     await ctx.send(msg)
 
 async def clear_queue(ctx):

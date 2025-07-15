@@ -3,8 +3,10 @@ import yt_dlp
 import asyncio
 
 from collections import defaultdict, deque
+from utils.logger import logger
 
 queues = defaultdict(deque)
+disconnect_task = None
 
 YDL_OPTIONS = {
     'format': 'bestaudio',
@@ -32,6 +34,8 @@ async def play_audio(ctx, url):
     await _play_next(ctx)
 
 async def _play_next(ctx):
+    global disconnect_task
+    
     guild_id = ctx.guild.id
     if not queues[guild_id]:
         return
@@ -49,11 +53,19 @@ async def _play_next(ctx):
 
     source = discord.FFmpegPCMAudio(info[0], **FFMPEG_OPTIONS)
     voice.play(source, after=lambda e: asyncio.run_coroutine_threadsafe(_play_next(ctx), ctx.bot.loop))
+
+    logger.info(f"Tocando video: {info[1]}")
+
+    if disconnect_task:
+        disconnect_task.cancel()
+
+    disconnect_task = asyncio.create_task(disconnect_if_idle(ctx))
+
     await ctx.send(f"Tocando agora: {info[1]}")
 
 async def stop_audio(ctx):
     guild_id = ctx.guild.id
-    queues[guild_id].clear()  # limpa a fila
+    queues[guild_id].clear()
 
     voice = ctx.guild.voice_client
     if voice and voice.is_connected():
@@ -69,7 +81,7 @@ async def skip_audio(ctx):
         return
 
     await ctx.send("Pulando música...")
-    voice.stop()  # Isto aciona o `after=` no `voice.play()` e chama `_play_next()`
+    voice.stop()
 
 queues = defaultdict(deque)
 
@@ -82,7 +94,7 @@ async def show_queue(ctx):
 
     msg = "**Fila atual:**\n"
     for i, info in enumerate(queue, 1):
-        msg += f"{i}. {info[1]}: {info[2]} \n"
+        msg += f"{i}. {info[1]}\n"
     await ctx.send(msg)
 
 async def clear_queue(ctx):
@@ -106,3 +118,17 @@ async def resume_audio(ctx):
     voice.resume()
     await ctx.send("Música retomada.")
 
+async def disconnect_if_idle(ctx):
+    try:
+        logger.info("Iniciando verificação de inatividade")
+        await asyncio.sleep(180)
+        guild_id = ctx.guild.id
+        if not queues[guild_id]:
+            voice = ctx.voice_client
+            if voice and voice.is_connected():
+                await voice.disconnect()
+                await ctx.send("⏹️ Nenhuma música tocada em 3 minutos. Saindo do canal de voz.")
+                logger.info("Tempo de inatividade atingido. Saindo do canal de voz.")
+    except asyncio.CancelledError:
+        logger.info(f"Tempo de inatividade resetado")
+        pass

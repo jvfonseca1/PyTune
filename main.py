@@ -12,6 +12,8 @@ from commands.clear import clear
 from commands.pause import pause
 from commands.resume import resume
 
+from utils.logger import logger
+
 # Carrega variáveis de ambiente
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -24,7 +26,7 @@ bot = commands.Bot(command_prefix=PREFIX, intents=intents)
 # Carrega comandos do diretório
 @bot.event
 async def on_ready():
-    print(f'Bot conectado como {bot.user}')
+    logger.info(f'Bot conectado como {bot.user}')
 
 bot.add_command(play)
 bot.add_command(stop)

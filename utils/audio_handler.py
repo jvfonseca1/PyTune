@@ -56,10 +56,8 @@ async def _play_next(ctx):
 
     logger.info(f"Tocando video: {info[1]}")
 
-    if disconnect_task:
-        disconnect_task.cancel()
-
-    disconnect_task = asyncio.create_task(disconnect_if_idle(ctx))
+    if not disconnect_task:
+        disconnect_task = asyncio.create_task(disconnect_if_idle(ctx))
 
     await ctx.send(f"Tocando agora: {info[1]}")
 
@@ -70,6 +68,7 @@ async def stop_audio(ctx):
     voice = ctx.guild.voice_client
     if voice and voice.is_connected():
         await voice.disconnect()
+        logger.info("Desconectado do canal de voz.")
         await ctx.send("Parado e desconectado.")
     else:
         await ctx.send("Não estou em um canal de voz.")
@@ -80,6 +79,7 @@ async def skip_audio(ctx):
         await ctx.send("Nenhuma música está tocando.")
         return
 
+    logger.info("Música pulada")
     await ctx.send("Pulando música...")
     voice.stop()
 
@@ -108,6 +108,7 @@ async def pause_audio(ctx):
         await ctx.send("Nenhuma música está tocando para pausar.")
         return
     voice.pause()
+    logger.info("Música pausada.")
     await ctx.send("Música pausada.")
 
 async def resume_audio(ctx):
@@ -116,19 +117,33 @@ async def resume_audio(ctx):
         await ctx.send("Nenhuma música está pausada para retomar.")
         return
     voice.resume()
+    logger.info("Música retomada.")
     await ctx.send("Música retomada.")
 
 async def disconnect_if_idle(ctx):
     try:
+        global disconnect_task
         logger.info("Iniciando verificação de inatividade")
-        await asyncio.sleep(180)
-        guild_id = ctx.guild.id
-        if not queues[guild_id]:
-            voice = ctx.voice_client
-            if voice and voice.is_connected():
+        voice = ctx.voice_client
+        while voice and voice.is_connected():
+            await asyncio.sleep(180)
+            guild_id = ctx.guild.id
+            if not queues[guild_id] and not voice.is_playing() and not voice.is_paused():
                 await voice.disconnect()
-                await ctx.send("⏹️ Nenhuma música tocada em 3 minutos. Saindo do canal de voz.")
+                await ctx.send("⏹️ Nenhuma música tocada há pelo menos 3 minutos. Saindo do canal de voz.")
                 logger.info("Tempo de inatividade atingido. Saindo do canal de voz.")
-    except asyncio.CancelledError:
-        logger.info(f"Tempo de inatividade resetado")
+                disconnect_task = None
+                break
+
+            members = voice.channel.members
+            non_bots = [m for m in members if not m.bot]
+            if not non_bots:
+                await voice.disconnect()
+                await ctx.send("⏹️ Todos os membros saíram do canal de voz. Saindo do canal de voz.")
+                logger.info("Todos os membros saíram do canal de voz. Saindo do canal de voz.")
+                disconnect_task = None
+                break
+    except Exception as e:
+        logger.error(f"Erro na conferência de inatividade: {e}")
+        disconnect_task = None
         pass

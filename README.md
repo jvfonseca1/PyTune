@@ -15,6 +15,8 @@ Um bot de música simples e eficiente para Discord que permite reproduzir músic
 - 🛑 Parar reprodução e desconectar
 - 📋 Sistema de fila de músicas
 - 🗑️ Limpar fila de reprodução
+- ⏱️ Desconexão automática após 3 minutos de inatividade
+- 📝 Sistema de logs para monitoramento
 
 ## 🚀 Comandos
 
@@ -33,6 +35,7 @@ Um bot de música simples e eficiente para Discord que permite reproduzir músic
 - Python 3.8+
 - FFmpeg instalado no sistema
 - Token de bot do Discord
+- Acesso à API do Discord
 
 ## 🛠️ Instalação
 
@@ -54,7 +57,11 @@ pip install -r requirements.txt
 DISCORD_TOKEN=seu_token_aqui
 ```
 
-4. **Execute o bot:**
+4. **Opcional: Configure cookies para vídeos restritos:**
+   - Crie um arquivo `cookies.txt` na raiz do projeto com cookies do YouTube
+   - Isso permite acessar vídeos com restrição de idade ou conteúdo privado
+
+5. **Execute o bot:**
 ```bash
 python main.py
 ```
@@ -79,6 +86,7 @@ python main.py
 - `discord.py` - Biblioteca para interação com Discord
 - `yt-dlp` - Download e extração de áudio do YouTube
 - `python-dotenv` - Gerenciamento de variáveis de ambiente
+- `logging` - Sistema de logs para monitoramento
 
 ## 🏗️ Estrutura do Projeto
 
@@ -93,9 +101,11 @@ PyTune/
 │   ├── queue.py           # Comando de fila
 │   └── clear.py           # Comando de limpar fila
 ├── utils/                 # Utilitários
-│   └── audio_handler.py   # Manipulação de áudio
+│   ├── audio_handler.py   # Manipulação de áudio
+│   └── logger.py          # Sistema de logs
 ├── main.py                # Arquivo principal
 ├── requirements.txt       # Dependências
+├── cookies.txt            # Cookies para autenticação no YouTube (opcional)
 ├── .env                   # Variáveis de ambiente
 └── .gitignore             # Arquivos ignorados pelo Git
 ```
@@ -128,6 +138,10 @@ PyTune/
 - Verifique se o bot tem permissões para conectar e falar no canal
 - Certifique-se de estar em um canal de voz antes de usar comandos
 
+### Problemas com vídeos restritos do YouTube
+- Alguns vídeos podem exigir autenticação
+- Crie um arquivo `cookies.txt` na raiz do projeto com cookies do YouTube para acessar conteúdo restrito
+
 ## 🤝 Contribuição
 
 1. Faça um fork do projeto
@@ -143,7 +157,3 @@ Agradeço em especial [@helpmeagain](https://github.com/helpmeagain) e [@Coriast
 ## ⚠️ Aviso Legal
 
 Este bot é apenas para uso educacional e pessoal. Respeite os termos de serviço do YouTube e do Discord ao usar este bot.
-
----
-
-Desenvolvido com ❤️ para a comunidade Discord

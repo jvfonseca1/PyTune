@@ -1,6 +1,7 @@
 import discord
 import yt_dlp
 import asyncio
+import os
 
 from collections import defaultdict, deque
 from utils.logger import logger
@@ -12,6 +13,7 @@ YDL_OPTIONS = {
     'format': 'bestaudio',
     'quiet': True,
     'noplaylist': True,
+    'cookiefile':  os.path.join(os.path.dirname(__file__), '..', 'cookies.txt'),
     'default_search': 'ytsearch'
 }
 
@@ -28,7 +30,7 @@ async def play_audio(ctx, url):
 
     voice = ctx.guild.voice_client
     if voice and voice.is_playing():
-        await ctx.send("Adicionado à fila.")
+        await ctx.send("🎵 Video adicionado à fila.")
         return
 
     await _play_next(ctx)
@@ -59,7 +61,7 @@ async def _play_next(ctx):
     if not disconnect_task:
         disconnect_task = asyncio.create_task(disconnect_if_idle(ctx))
 
-    await ctx.send(f"Tocando agora: {info[1]}")
+    await ctx.send(f"🎵 Tocando agora: {info[1]}")
 
 async def stop_audio(ctx):
     guild_id = ctx.guild.id
@@ -69,7 +71,7 @@ async def stop_audio(ctx):
     if voice and voice.is_connected():
         await voice.disconnect()
         logger.info("Desconectado do canal de voz.")
-        await ctx.send("Parado e desconectado.")
+        await ctx.send("⏹️ Parado e desconectado.")
     else:
         await ctx.send("Não estou em um canal de voz.")
 
@@ -79,7 +81,7 @@ async def skip_audio(ctx):
         await ctx.send("Nenhuma música está tocando.")
         return
 
-    logger.info("Música pulada")
+    logger.info("⏭️ Música pulada")
     await ctx.send("Pulando música...")
     voice.stop()
 
@@ -109,7 +111,7 @@ async def pause_audio(ctx):
         return
     voice.pause()
     logger.info("Música pausada.")
-    await ctx.send("Música pausada.")
+    await ctx.send("⏸️ Música pausada.")
 
 async def resume_audio(ctx):
     voice = ctx.guild.voice_client
@@ -118,7 +120,7 @@ async def resume_audio(ctx):
         return
     voice.resume()
     logger.info("Música retomada.")
-    await ctx.send("Música retomada.")
+    await ctx.send("▶️ Música retomada.")
 
 async def disconnect_if_idle(ctx):
     try:
@@ -128,7 +130,7 @@ async def disconnect_if_idle(ctx):
         while voice and voice.is_connected():
             await asyncio.sleep(180)
             guild_id = ctx.guild.id
-            if not queues[guild_id] and not voice.is_playing() and not voice.is_paused():
+            if voice and voice.is_connected() and not queues[guild_id] and not voice.is_playing() and not voice.is_paused():
                 await voice.disconnect()
                 await ctx.send("⏹️ Nenhuma música tocada há pelo menos 3 minutos. Saindo do canal de voz.")
                 logger.info("Tempo de inatividade atingido. Saindo do canal de voz.")
@@ -137,7 +139,7 @@ async def disconnect_if_idle(ctx):
 
             members = voice.channel.members
             non_bots = [m for m in members if not m.bot]
-            if not non_bots:
+            if voice and voice.is_connected() and not non_bots:
                 await voice.disconnect()
                 await ctx.send("⏹️ Todos os membros saíram do canal de voz. Saindo do canal de voz.")
                 logger.info("Todos os membros saíram do canal de voz. Saindo do canal de voz.")

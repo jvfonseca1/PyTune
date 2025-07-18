@@ -1,0 +1,2 @@
+# Netscape HTTP Cookie File
+# To be generated via extension with chrome or prefered way
